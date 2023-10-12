@@ -11,6 +11,7 @@ import { expect } from './shared/expect'
 import { encodePath } from './shared/path'
 import snapshotGasCost from './shared/snapshotGasCost'
 import { getMaxTick, getMinTick } from './shared/ticks'
+import { H1NativeApplication_Fee } from './h1/h1'
 
 describe('SwapRouter gas tests', function () {
   this.timeout(40000)
@@ -134,8 +135,8 @@ describe('SwapRouter gas tests', function () {
 
     // optimized for the gas test
     return data.length === 1
-      ? router.connect(trader).exactInput(params, { value })
-      : router.connect(trader).multicall(data, { value })
+      ? router.connect(trader).exactInput(params, { value: H1NativeApplication_Fee.add(value) })
+      : router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.mul(1).add(value) })
   }
 
   async function exactInputSingle(
@@ -166,8 +167,8 @@ describe('SwapRouter gas tests', function () {
 
     // optimized for the gas test
     return data.length === 1
-      ? router.connect(trader).exactInputSingle(params, { value })
-      : router.connect(trader).multicall(data, { value })
+      ? router.connect(trader).exactInputSingle(params, { value: H1NativeApplication_Fee.add(value) })
+      : router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.mul(1).add(value) })
   }
 
   async function exactOutput(tokens: string[]): Promise<ContractTransaction> {
@@ -191,7 +192,7 @@ describe('SwapRouter gas tests', function () {
     if (inputIsWETH9) data.push(router.interface.encodeFunctionData('refundETH'))
     if (outputIsWETH9) data.push(router.interface.encodeFunctionData('unwrapWETH9', [amountOut, trader.address]))
 
-    return router.connect(trader).multicall(data, { value })
+    return router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.mul(1).add(value) })
   }
 
   async function exactOutputSingle(
@@ -221,7 +222,7 @@ describe('SwapRouter gas tests', function () {
     if (inputIsWETH9) data.push(router.interface.encodeFunctionData('unwrapWETH9', [0, trader.address]))
     if (outputIsWETH9) data.push(router.interface.encodeFunctionData('unwrapWETH9', [amountOut, trader.address]))
 
-    return router.connect(trader).multicall(data, { value })
+    return router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.mul(1).add(value) })
   }
 
   // TODO should really throw this in the fixture
@@ -326,7 +327,7 @@ describe('SwapRouter gas tests', function () {
         router.interface.encodeFunctionData('sweepToken', [tokens[0].address, 2, trader.address]),
       ]
 
-      await snapshotGasCost(router.connect(trader).multicall(data))
+      await snapshotGasCost(router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.mul(2).add(3) }))
     })
 
     it('3 trades (directly to sender)', async () => {
@@ -362,7 +363,7 @@ describe('SwapRouter gas tests', function () {
         router.interface.encodeFunctionData('exactInput', [swap2]),
       ]
 
-      await snapshotGasCost(router.connect(trader).multicall(data))
+      await snapshotGasCost(router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.mul(3).add(3) }))
     })
   })
 
@@ -390,7 +391,7 @@ describe('SwapRouter gas tests', function () {
       router.interface.encodeFunctionData('exactInput', [swap1]),
     ]
 
-    await snapshotGasCost(router.connect(trader).multicall(data))
+    await snapshotGasCost(router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.mul(2).add(3) }))
   })
 
   describe('#exactInputSingle', () => {

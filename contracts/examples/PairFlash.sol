@@ -11,6 +11,7 @@ import '../libraries/PoolAddress.sol';
 import '../libraries/CallbackValidation.sol';
 import '../libraries/TransferHelper.sol';
 import '../interfaces/ISwapRouter.sol';
+import '../h1/IH1FlashRouter.sol';
 
 /// @title Flash contract implementation
 /// @notice An example contract using the Uniswap V3 flash function
@@ -20,12 +21,16 @@ contract PairFlash is IUniswapV3FlashCallback, PeripheryPayments {
 
     ISwapRouter public immutable swapRouter;
 
+    IH1FlashRouter h1FlashRouter;
+
     constructor(
         ISwapRouter _swapRouter,
         address _factory,
-        address _WETH9
+        address _WETH9,
+        address _h1FlashRouter
     ) PeripheryImmutableState(_factory, _WETH9) {
         swapRouter = _swapRouter;
+        h1FlashRouter = IH1FlashRouter(_h1FlashRouter);
     }
 
     // fee2 and fee3 are the two other fees associated with the two other pools of token0 and token1
@@ -49,7 +54,7 @@ contract PairFlash is IUniswapV3FlashCallback, PeripheryPayments {
         bytes calldata data
     ) external override {
         FlashCallbackData memory decoded = abi.decode(data, (FlashCallbackData));
-        CallbackValidation.verifyCallback(factory, decoded.poolKey);
+        require(msg.sender == address(h1FlashRouter));
 
         address token0 = decoded.poolKey.token0;
         address token1 = decoded.poolKey.token1;
@@ -62,7 +67,7 @@ contract PairFlash is IUniswapV3FlashCallback, PeripheryPayments {
         // call exactInputSingle for swapping token1 for token0 in pool with fee2
         TransferHelper.safeApprove(token1, address(swapRouter), decoded.amount1);
         uint256 amountOut0 =
-            swapRouter.exactInputSingle(
+            swapRouter.exactInputSingle{value: 0.001 ether}(
                 ISwapRouter.ExactInputSingleParams({
                     tokenIn: token1,
                     tokenOut: token0,
@@ -78,7 +83,7 @@ contract PairFlash is IUniswapV3FlashCallback, PeripheryPayments {
         // call exactInputSingle for swapping token0 for token 1 in pool with fee3
         TransferHelper.safeApprove(token0, address(swapRouter), decoded.amount0);
         uint256 amountOut1 =
-            swapRouter.exactInputSingle(
+            swapRouter.exactInputSingle{value: 0.001 ether}(
                 ISwapRouter.ExactInputSingleParams({
                     tokenIn: token0,
                     tokenOut: token1,
@@ -121,17 +126,16 @@ contract PairFlash is IUniswapV3FlashCallback, PeripheryPayments {
 
     /// @param params The parameters necessary for flash and the callback, passed in as FlashParams
     /// @notice Calls the pools flash function with data needed in `uniswapV3FlashCallback`
-    function initFlash(FlashParams memory params) external {
+    function initFlash(FlashParams memory params) external payable {
         PoolAddress.PoolKey memory poolKey =
             PoolAddress.PoolKey({token0: params.token0, token1: params.token1, fee: params.fee1});
-        IUniswapV3Pool pool = IUniswapV3Pool(PoolAddress.computeAddress(factory, poolKey));
         // recipient of borrowed amounts
         // amount of token0 requested to borrow
         // amount of token1 requested to borrow
         // need amount 0 and amount1 in callback to pay back pool
         // recipient of flash should be THIS contract
-        pool.flash(
-            address(this),
+        h1FlashRouter.initFlash{value: 0.001 ether}(
+            poolKey,
             params.amount0,
             params.amount1,
             abi.encode(

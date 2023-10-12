@@ -24,6 +24,7 @@ import poolAtAddress from './shared/poolAtAddress'
 import snapshotGasCost from './shared/snapshotGasCost'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { sortedTokens } from './shared/tokenSort'
+import {H1NativeApplication_Fee} from './h1/h1'
 
 describe('NonfungiblePositionManager', () => {
   let wallets: Wallet[]
@@ -1216,7 +1217,7 @@ describe('NonfungiblePositionManager', () => {
           path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
           amountIn: swapAmount,
           amountOutMinimum: 0,
-        })
+        }, {value: H1NativeApplication_Fee})
       })
       it('expected amounts', async () => {
         const { amount0: nft1Amount0, amount1: nft1Amount1 } = await nft.callStatic.collect({

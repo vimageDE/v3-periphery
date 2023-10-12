@@ -10,12 +10,14 @@ import './interfaces/ISwapRouter.sol';
 import './base/PeripheryImmutableState.sol';
 import './base/PeripheryValidation.sol';
 import './base/PeripheryPaymentsWithFee.sol';
-import './base/Multicall.sol';
+import './h1/H1Multicall.sol';
 import './base/SelfPermit.sol';
 import './libraries/Path.sol';
 import './libraries/PoolAddress.sol';
 import './libraries/CallbackValidation.sol';
 import './interfaces/external/IWETH9.sol';
+
+import './h1/H1NativeApplication.sol';
 
 /// @title Uniswap V3 Swap Router
 /// @notice Router for stateless execution of swaps against Uniswap V3
@@ -24,8 +26,9 @@ contract SwapRouter is
     PeripheryImmutableState,
     PeripheryValidation,
     PeripheryPaymentsWithFee,
-    Multicall,
-    SelfPermit
+    H1Multicall,
+    SelfPermit,
+    H1NativeApplication
 {
     using Path for bytes;
     using SafeCast for uint256;
@@ -37,7 +40,11 @@ contract SwapRouter is
     /// @dev Transient storage variable used for returning the computed amount in for an exact output swap.
     uint256 private amountInCached = DEFAULT_AMOUNT_IN_CACHED;
 
-    constructor(address _factory, address _WETH9) PeripheryImmutableState(_factory, _WETH9) {}
+    constructor(
+        address _factory,
+        address _WETH9,
+        address h1feeAddress
+    ) PeripheryImmutableState(_factory, _WETH9) H1NativeApplication(h1feeAddress) {}
 
     /// @dev Returns the pool for the given token pair and fee. The pool contract may or may not exist.
     function getPool(
@@ -117,6 +124,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
+        applicationFeeWithPayableAndRefund(blockRefund)
         returns (uint256 amountOut)
     {
         amountOut = exactInputInternal(
@@ -134,6 +142,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
+        applicationFeeWithPayableAndRefund(blockRefund)
         returns (uint256 amountOut)
     {
         address payer = msg.sender; // msg.sender pays for the first hop
@@ -205,6 +214,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
+        applicationFeeWithPayableAndRefund(blockRefund)
         returns (uint256 amountIn)
     {
         // avoid an SLOAD by using the swap return data
@@ -226,6 +236,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
+        applicationFeeWithPayableAndRefund(blockRefund)
         returns (uint256 amountIn)
     {
         // it's okay that the payer is fixed to msg.sender here, as they're only paying for the "final" exact output

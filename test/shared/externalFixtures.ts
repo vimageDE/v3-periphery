@@ -47,10 +47,12 @@ export const v3RouterFixture: Fixture<{
 }> = async ([wallet], provider) => {
   const { weth9 } = await wethFixture([wallet], provider)
   const factory = await v3CoreFactoryFixture([wallet], provider)
+  const mockFeeContract = await (await ethers.getContractFactory('MockFeeContract')).deploy(ethers.utils.parseEther('0.001'))
 
   const router = (await (await ethers.getContractFactory('MockTimeSwapRouter')).deploy(
     factory.address,
-    weth9.address
+    weth9.address,
+    mockFeeContract.address,
   )) as MockTimeSwapRouter
 
   return { factory, weth9, router }

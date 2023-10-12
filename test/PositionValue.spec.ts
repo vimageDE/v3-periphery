@@ -21,6 +21,7 @@ import snapshotGasCost from './shared/snapshotGasCost'
 import { expect } from './shared/expect'
 
 import { abi as IUniswapV3PoolABI } from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json'
+import { H1NativeApplication_Fee } from './h1/h1'
 
 describe('PositionValue', async () => {
   const [...wallets] = waffle.provider.getWallets()
@@ -103,22 +104,28 @@ describe('PositionValue', async () => {
       await tokens[1].approve(router.address, swapAmount)
 
       // accmuluate token0 fees
-      await router.exactInput({
-        recipient: wallets[0].address,
-        deadline: 1,
-        path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
-        amountIn: swapAmount,
-        amountOutMinimum: 0,
-      })
+      await router.exactInput(
+        {
+          recipient: wallets[0].address,
+          deadline: 1,
+          path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
+          amountIn: swapAmount,
+          amountOutMinimum: 0,
+        },
+        { value: H1NativeApplication_Fee }
+      )
 
       // accmuluate token1 fees
-      await router.exactInput({
-        recipient: wallets[0].address,
-        deadline: 1,
-        path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
-        amountIn: swapAmount,
-        amountOutMinimum: 0,
-      })
+      await router.exactInput(
+        {
+          recipient: wallets[0].address,
+          deadline: 1,
+          path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
+          amountIn: swapAmount,
+          amountOutMinimum: 0,
+        },
+        { value: H1NativeApplication_Fee }
+      )
 
       sqrtRatioX96 = (await pool.slot0()).sqrtPriceX96
     })
@@ -307,22 +314,28 @@ describe('PositionValue', async () => {
         await tokens[1].approve(router.address, swapAmount)
 
         // accmuluate token0 fees
-        await router.exactInput({
-          recipient: wallets[0].address,
-          deadline: 1,
-          path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
-          amountIn: swapAmount,
-          amountOutMinimum: 0,
-        })
+        await router.exactInput(
+          {
+            recipient: wallets[0].address,
+            deadline: 1,
+            path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
+            amountIn: swapAmount,
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
 
         // accmuluate token1 fees
-        await router.exactInput({
-          recipient: wallets[0].address,
-          deadline: 1,
-          path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
-          amountIn: swapAmount,
-          amountOutMinimum: 0,
-        })
+        await router.exactInput(
+          {
+            recipient: wallets[0].address,
+            deadline: 1,
+            path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
+            amountIn: swapAmount,
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       })
 
       it('return the correct amount of fees', async () => {
@@ -352,13 +365,16 @@ describe('PositionValue', async () => {
         await tokens[0].approve(router.address, swapAmount)
 
         // accmuluate more token0 fees after clearing initial amount
-        await router.exactInput({
-          recipient: wallets[0].address,
-          deadline: 1,
-          path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
-          amountIn: swapAmount,
-          amountOutMinimum: 0,
-        })
+        await router.exactInput(
+          {
+            recipient: wallets[0].address,
+            deadline: 1,
+            path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
+            amountIn: swapAmount,
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
 
         const feesFromCollect = await nft.callStatic.collect({
           tokenId,
@@ -396,22 +412,28 @@ describe('PositionValue', async () => {
         await tokens[1].approve(router.address, constants.MaxUint256)
 
         // accumulate token1 fees
-        await router.exactInput({
-          recipient: wallets[0].address,
-          deadline: 1,
-          path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
-          amountIn: expandTo18Decimals(1_000),
-          amountOutMinimum: 0,
-        })
+        await router.exactInput(
+          {
+            recipient: wallets[0].address,
+            deadline: 1,
+            path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
+            amountIn: expandTo18Decimals(1_000),
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
 
         // accumulate token0 fees and push price below tickLower
-        await router.exactInput({
-          recipient: wallets[0].address,
-          deadline: 1,
-          path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
-          amountIn: expandTo18Decimals(50_000),
-          amountOutMinimum: 0,
-        })
+        await router.exactInput(
+          {
+            recipient: wallets[0].address,
+            deadline: 1,
+            path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
+            amountIn: expandTo18Decimals(50_000),
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       })
 
       it('returns the correct amount of fees', async () => {
@@ -452,22 +474,28 @@ describe('PositionValue', async () => {
         await tokens[1].approve(router.address, constants.MaxUint256)
 
         // accumulate token0 fees
-        await router.exactInput({
-          recipient: wallets[0].address,
-          deadline: 1,
-          path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
-          amountIn: expandTo18Decimals(1_000),
-          amountOutMinimum: 0,
-        })
+        await router.exactInput(
+          {
+            recipient: wallets[0].address,
+            deadline: 1,
+            path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
+            amountIn: expandTo18Decimals(1_000),
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
 
         // accumulate token1 fees and push price above tickUpper
-        await router.exactInput({
-          recipient: wallets[0].address,
-          deadline: 1,
-          path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
-          amountIn: expandTo18Decimals(50_000),
-          amountOutMinimum: 0,
-        })
+        await router.exactInput(
+          {
+            recipient: wallets[0].address,
+            deadline: 1,
+            path: encodePath([tokens[1].address, tokens[0].address], [FeeAmount.MEDIUM]),
+            amountIn: expandTo18Decimals(50_000),
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       })
 
       it('returns the correct amount of fees', async () => {

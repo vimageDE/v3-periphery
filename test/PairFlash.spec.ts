@@ -12,6 +12,7 @@ import {
   NFTDescriptor,
   Quoter,
   SwapRouter,
+  H1FlashRouter,
 } from '../typechain'
 import completeFixture from './shared/completeFixture'
 import { FeeAmount, MaxUint128, TICK_SPACINGS } from './shared/constants'
@@ -21,6 +22,7 @@ import snapshotGasCost from './shared/snapshotGasCost'
 import { expect } from './shared/expect'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { computePoolAddress } from './shared/computePoolAddress'
+import { H1NativeApplication_Fee } from './h1/h1'
 
 describe('PairFlash test', () => {
   const provider = waffle.provider
@@ -62,8 +64,22 @@ describe('PairFlash test', () => {
     const token0 = tokens[0]
     const token1 = tokens[1]
 
+    const fee = await (await ethers.getContractFactory('MockFeeContract')).deploy(H1NativeApplication_Fee)
+
+    const h1FlashRouterFactory = await ethers.getContractFactory('H1FlashRouter')
+    const h1FlashRouter = (await h1FlashRouterFactory.deploy(
+      router.address,
+      factory.address,
+      fee.address
+    )) as H1FlashRouter
+
     const flashContractFactory = await ethers.getContractFactory('PairFlash')
-    const flash = (await flashContractFactory.deploy(router.address, factory.address, weth9.address)) as PairFlash
+    const flash = (await flashContractFactory.deploy(
+      router.address,
+      factory.address,
+      weth9.address,
+      h1FlashRouter.address
+    )) as PairFlash
 
     const quoterFactory = await ethers.getContractFactory('Quoter')
     const quoter = (await quoterFactory.deploy(factory.address, weth9.address)) as Quoter
@@ -134,7 +150,7 @@ describe('PairFlash test', () => {
         encodePriceSqrt(5, 10)
       )
 
-      await expect(flash.initFlash(flashParams))
+      await expect(flash.initFlash(flashParams, { value: H1NativeApplication_Fee.mul(3) }))
         .to.emit(token0, 'Transfer')
         .withArgs(pool1, flash.address, amount0In)
         .to.emit(token1, 'Transfer')
@@ -162,7 +178,7 @@ describe('PairFlash test', () => {
         fee2: FeeAmount.LOW,
         fee3: FeeAmount.HIGH,
       }
-      await snapshotGasCost(flash.initFlash(flashParams))
+      await snapshotGasCost(flash.initFlash(flashParams, { value: H1NativeApplication_Fee.mul(3) }))
     })
   })
 })

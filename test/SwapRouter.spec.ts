@@ -10,6 +10,7 @@ import { expect } from './shared/expect'
 import { encodePath } from './shared/path'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { computePoolAddress } from './shared/computePoolAddress'
+import { H1NativeApplication_Fee } from './h1/h1'
 
 describe('SwapRouter', function () {
   this.timeout(40000)
@@ -161,13 +162,15 @@ describe('SwapRouter', function () {
 
         // ensure that the swap fails if the limit is any tighter
         params.amountOutMinimum += 1
-        await expect(router.connect(trader).exactInput(params, { value })).to.be.revertedWith('Too little received')
+        await expect(
+          router.connect(trader).exactInput(params, { value: H1NativeApplication_Fee.add(value) })
+        ).to.be.revertedWith('Too little received')
         params.amountOutMinimum -= 1
 
         // optimized for the gas test
         return data.length === 1
-          ? router.connect(trader).exactInput(params, { value })
-          : router.connect(trader).multicall(data, { value })
+          ? router.connect(trader).exactInput(params, { value: H1NativeApplication_Fee.add(value) })
+          : router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.add(value) })
       }
 
       describe('single-pool', () => {
@@ -394,15 +397,15 @@ describe('SwapRouter', function () {
 
         // ensure that the swap fails if the limit is any tighter
         params.amountOutMinimum += 1
-        await expect(router.connect(trader).exactInputSingle(params, { value })).to.be.revertedWith(
-          'Too little received'
-        )
+        await expect(
+          router.connect(trader).exactInputSingle(params, { value: H1NativeApplication_Fee.add(value) })
+        ).to.be.revertedWith('Too little received')
         params.amountOutMinimum -= 1
 
         // optimized for the gas test
         return data.length === 1
-          ? router.connect(trader).exactInputSingle(params, { value })
-          : router.connect(trader).multicall(data, { value })
+          ? router.connect(trader).exactInputSingle(params, { value: H1NativeApplication_Fee.add(value) })
+          : router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.add(value) })
       }
 
       it('0 -> 1', async () => {
@@ -526,10 +529,12 @@ describe('SwapRouter', function () {
 
         // ensure that the swap fails if the limit is any tighter
         params.amountInMaximum -= 1
-        await expect(router.connect(trader).exactOutput(params, { value })).to.be.revertedWith('Too much requested')
+        await expect(
+          router.connect(trader).exactOutput(params, { value: H1NativeApplication_Fee.add(value) })
+        ).to.be.revertedWith('Too much requested')
         params.amountInMaximum += 1
 
-        return router.connect(trader).multicall(data, { value })
+        return router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.add(value) })
       }
 
       describe('single-pool', () => {
@@ -750,12 +755,12 @@ describe('SwapRouter', function () {
 
         // ensure that the swap fails if the limit is any tighter
         params.amountInMaximum -= 1
-        await expect(router.connect(trader).exactOutputSingle(params, { value })).to.be.revertedWith(
-          'Too much requested'
-        )
+        await expect(
+          router.connect(trader).exactOutputSingle(params, { value: H1NativeApplication_Fee.add(value) })
+        ).to.be.revertedWith('Too much requested')
         params.amountInMaximum += 1
 
-        return router.connect(trader).multicall(data, { value })
+        return router.connect(trader).multicall(data, { value: H1NativeApplication_Fee.add(value) })
       }
 
       it('0 -> 1', async () => {
@@ -878,7 +883,7 @@ describe('SwapRouter', function () {
           ]),
         ]
 
-        await router.connect(trader).multicall(data)
+        await router.connect(trader).multicall(data, { value: H1NativeApplication_Fee })
 
         const balance = await tokens[1].balanceOf(feeRecipient)
         expect(balance.eq(1)).to.be.eq(true)
@@ -907,7 +912,7 @@ describe('SwapRouter', function () {
           ]),
         ]
 
-        await router.connect(trader).multicall(data)
+        await router.connect(trader).multicall(data, { value: H1NativeApplication_Fee })
         const endBalance = await waffle.provider.getBalance(feeRecipient)
         expect(endBalance.sub(startBalance).eq(1)).to.be.eq(true)
       })
