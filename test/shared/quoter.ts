@@ -3,6 +3,7 @@ import { MockTimeNonfungiblePositionManager } from '../../typechain'
 import { FeeAmount, TICK_SPACINGS } from './constants'
 import { encodePriceSqrt } from './encodePriceSqrt'
 import { getMaxTick, getMinTick } from './ticks'
+import { H1NativeApplication_Fee } from '../h1/h1'
 
 export async function createPool(
   nft: MockTimeNonfungiblePositionManager,
@@ -29,7 +30,7 @@ export async function createPool(
     deadline: 1,
   }
 
-  return nft.mint(liquidityParams)
+  return nft.mint(liquidityParams, { value: H1NativeApplication_Fee })
 }
 
 export async function createPoolWithMultiplePositions(
@@ -57,7 +58,7 @@ export async function createPoolWithMultiplePositions(
     deadline: 1,
   }
 
-  await nft.mint(liquidityParams)
+  await nft.mint(liquidityParams, { value: H1NativeApplication_Fee })
 
   const liquidityParams2 = {
     token0: tokenAddressA,
@@ -73,7 +74,7 @@ export async function createPoolWithMultiplePositions(
     deadline: 1,
   }
 
-  await nft.mint(liquidityParams2)
+  await nft.mint(liquidityParams2, { value: H1NativeApplication_Fee })
 
   const liquidityParams3 = {
     token0: tokenAddressA,
@@ -89,7 +90,7 @@ export async function createPoolWithMultiplePositions(
     deadline: 1,
   }
 
-  return nft.mint(liquidityParams3)
+  return nft.mint(liquidityParams3, { value: H1NativeApplication_Fee })
 }
 
 export async function createPoolWithZeroTickInitialized(
@@ -117,7 +118,7 @@ export async function createPoolWithZeroTickInitialized(
     deadline: 1,
   }
 
-  await nft.mint(liquidityParams)
+  await nft.mint(liquidityParams, { value: H1NativeApplication_Fee })
 
   const liquidityParams2 = {
     token0: tokenAddressA,
@@ -133,7 +134,7 @@ export async function createPoolWithZeroTickInitialized(
     deadline: 1,
   }
 
-  await nft.mint(liquidityParams2)
+  await nft.mint(liquidityParams2, { value: H1NativeApplication_Fee })
 
   const liquidityParams3 = {
     token0: tokenAddressA,
@@ -149,5 +150,5 @@ export async function createPoolWithZeroTickInitialized(
     deadline: 1,
   }
 
-  return nft.mint(liquidityParams3)
+  return nft.mint(liquidityParams3, { value: H1NativeApplication_Fee })
 }

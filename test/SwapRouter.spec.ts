@@ -123,7 +123,7 @@ describe('SwapRouter', function () {
         deadline: 1,
       }
 
-      return nft.mint(liquidityParams)
+      return nft.mint(liquidityParams, { value: H1NativeApplication_Fee })
     }
 
     async function createPoolWETH9(tokenAddress: string) {

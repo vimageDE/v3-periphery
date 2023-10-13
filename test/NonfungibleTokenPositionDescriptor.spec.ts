@@ -9,6 +9,7 @@ import { FeeAmount, TICK_SPACINGS } from './shared/constants'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { sortedTokens } from './shared/tokenSort'
 import { extractJSONFromURI } from './shared/extractJSONFromURI'
+import { H1NativeApplication_Fee } from './h1/h1'
 
 const DAI = '0x6B175474E89094C44Da98b954EedeAC495271d0F'
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
@@ -122,19 +123,22 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       )
       await weth9.approve(nft.address, 100)
       await tokens[1].approve(nft.address, 100)
-      await nft.mint({
-        token0: token0.address,
-        token1: token1.address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: wallets[0].address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: token0.address,
+          token1: token1.address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: wallets[0].address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
 
       const metadata = extractJSONFromURI(await nft.tokenURI(1))
       expect(metadata.name).to.match(/(\sETH\/TEST|TEST\/ETH)/)
@@ -152,19 +156,22 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       )
       await tokens[1].approve(nft.address, 100)
       await tokens[2].approve(nft.address, 100)
-      await nft.mint({
-        token0: token0.address,
-        token1: token1.address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: wallets[0].address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: token0.address,
+          token1: token1.address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: wallets[0].address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
 
       const metadata = extractJSONFromURI(await nft.tokenURI(1))
       expect(metadata.name).to.match(/TEST\/TEST/)
@@ -181,19 +188,22 @@ describe('NonfungibleTokenPositionDescriptor', () => {
       )
       await weth9.approve(nft.address, 100)
       await tokens[1].approve(nft.address, 100)
-      await nft.mint({
-        token0: token0.address,
-        token1: token1.address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: wallets[0].address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: token0.address,
+          token1: token1.address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: wallets[0].address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
 
       const nftDescriptorLibraryFactory = await ethers.getContractFactory('NFTDescriptor')
       const nftDescriptorLibrary = await nftDescriptorLibraryFactory.deploy()

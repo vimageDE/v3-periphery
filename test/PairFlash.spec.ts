@@ -56,7 +56,7 @@ describe('PairFlash test', () => {
       deadline: 1,
     }
 
-    return nft.mint(liquidityParams)
+    return nft.mint(liquidityParams, { value: H1NativeApplication_Fee })
   }
 
   const flashFixture = async () => {

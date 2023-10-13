@@ -9,6 +9,7 @@ import { expect } from './shared/expect'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { computePoolAddress } from './shared/computePoolAddress'
 import snapshotGasCost from './shared/snapshotGasCost'
+import { H1NativeApplication_Fee } from './h1/h1'
 
 describe('TickLens', () => {
   let wallets: Wallet[]
@@ -75,7 +76,7 @@ describe('TickLens', () => {
         deadline: 1,
       }
 
-      return nft.mint(liquidityParams)
+      return nft.mint(liquidityParams, { value: H1NativeApplication_Fee })
     }
 
     async function mint(tickLower: number, tickUpper: number, amountBothDesired: BigNumberish): Promise<number> {
@@ -93,9 +94,9 @@ describe('TickLens', () => {
         deadline: 1,
       }
 
-      const { liquidity } = await nft.callStatic.mint(mintParams)
+      const { liquidity } = await nft.callStatic.mint(mintParams, { value: H1NativeApplication_Fee })
 
-      await nft.mint(mintParams)
+      await nft.mint(mintParams, { value: H1NativeApplication_Fee })
       return liquidity.toNumber()
     }
 

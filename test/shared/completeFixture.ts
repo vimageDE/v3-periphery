@@ -9,6 +9,7 @@ import {
   NonfungibleTokenPositionDescriptor,
   TestERC20,
   IUniswapV3Factory,
+  MockFeeContract,
 } from '../../typechain'
 
 const completeFixture: Fixture<{
@@ -18,8 +19,9 @@ const completeFixture: Fixture<{
   nft: MockTimeNonfungiblePositionManager
   nftDescriptor: NonfungibleTokenPositionDescriptor
   tokens: [TestERC20, TestERC20, TestERC20]
+  fee: MockFeeContract
 }> = async ([wallet], provider) => {
-  const { weth9, factory, router } = await v3RouterFixture([wallet], provider)
+  const { weth9, factory, router, fee } = await v3RouterFixture([wallet], provider)
 
   const tokenFactory = await ethers.getContractFactory('TestERC20')
   const tokens: [TestERC20, TestERC20, TestERC20] = [
@@ -45,7 +47,8 @@ const completeFixture: Fixture<{
   const nft = (await positionManagerFactory.deploy(
     factory.address,
     weth9.address,
-    nftDescriptor.address
+    nftDescriptor.address,
+    fee.address
   )) as MockTimeNonfungiblePositionManager
 
   tokens.sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1))
@@ -57,6 +60,7 @@ const completeFixture: Fixture<{
     tokens,
     nft,
     nftDescriptor,
+    fee,
   }
 }
 

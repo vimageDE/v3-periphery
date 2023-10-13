@@ -4,6 +4,7 @@ pragma solidity =0.7.6;
 pragma abicoder v2;
 
 import '../base/Multicall.sol';
+import '../libraries/TransferHelper.sol';
 
 contract H1Multicall is Multicall {
     /// @dev this can block potential refunds, until the last call

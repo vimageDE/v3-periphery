@@ -24,7 +24,7 @@ import poolAtAddress from './shared/poolAtAddress'
 import snapshotGasCost from './shared/snapshotGasCost'
 import { getMaxTick, getMinTick } from './shared/ticks'
 import { sortedTokens } from './shared/tokenSort'
-import {H1NativeApplication_Fee} from './h1/h1'
+import { H1NativeApplication_Fee } from './h1/h1'
 
 describe('NonfungiblePositionManager', () => {
   let wallets: Wallet[]
@@ -152,7 +152,11 @@ describe('NonfungiblePositionManager', () => {
         [token0.address, token1.address, FeeAmount.MEDIUM, encodePriceSqrt(1, 1)]
       )
 
-      await nft.multicall([createAndInitializePoolIfNecessaryData], { value: expandTo18Decimals(1) })
+      const refundETHData = nft.interface.encodeFunctionData('refundETH')
+
+      await nft.multicall([createAndInitializePoolIfNecessaryData, refundETHData], {
+        value: expandTo18Decimals(1),
+      })
     })
 
     it('gas', async () => {
@@ -170,19 +174,22 @@ describe('NonfungiblePositionManager', () => {
   describe('#mint', () => {
     it('fails if pool does not exist', async () => {
       await expect(
-        nft.mint({
-          token0: tokens[0].address,
-          token1: tokens[1].address,
-          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          amount0Desired: 100,
-          amount1Desired: 100,
-          amount0Min: 0,
-          amount1Min: 0,
-          recipient: wallet.address,
-          deadline: 1,
-          fee: FeeAmount.MEDIUM,
-        })
+        nft.mint(
+          {
+            token0: tokens[0].address,
+            token1: tokens[1].address,
+            tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: wallet.address,
+            deadline: 1,
+            fee: FeeAmount.MEDIUM,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       ).to.be.reverted
     })
 
@@ -195,19 +202,22 @@ describe('NonfungiblePositionManager', () => {
       )
       await tokens[0].approve(nft.address, 0)
       await expect(
-        nft.mint({
-          token0: tokens[0].address,
-          token1: tokens[1].address,
-          fee: FeeAmount.MEDIUM,
-          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          amount0Desired: 100,
-          amount1Desired: 100,
-          amount0Min: 0,
-          amount1Min: 0,
-          recipient: wallet.address,
-          deadline: 1,
-        })
+        nft.mint(
+          {
+            token0: tokens[0].address,
+            token1: tokens[1].address,
+            fee: FeeAmount.MEDIUM,
+            tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: wallet.address,
+            deadline: 1,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       ).to.be.revertedWith('STF')
     })
 
@@ -219,19 +229,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        fee: FeeAmount.MEDIUM,
-        recipient: other.address,
-        amount0Desired: 15,
-        amount1Desired: 15,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 10,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          fee: FeeAmount.MEDIUM,
+          recipient: other.address,
+          amount0Desired: 15,
+          amount1Desired: 15,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 10,
+        },
+        { value: H1NativeApplication_Fee }
+      )
       expect(await nft.balanceOf(other.address)).to.eq(1)
       expect(await nft.tokenOfOwnerByIndex(other.address, 0)).to.eq(1)
       const {
@@ -291,11 +304,13 @@ describe('NonfungiblePositionManager', () => {
 
       const balanceBefore = await wallet.getBalance()
       const tx = await nft.multicall([createAndInitializeData, mintData, refundETHData], {
-        value: expandTo18Decimals(1),
+        value: H1NativeApplication_Fee.add(expandTo18Decimals(1)),
       })
       const receipt = await tx.wait()
       const balanceAfter = await wallet.getBalance()
-      expect(balanceBefore).to.eq(balanceAfter.add(receipt.gasUsed.mul(tx.gasPrice)).add(100))
+      expect(balanceBefore).to.eq(
+        balanceAfter.add(receipt.gasUsed.mul(tx.gasPrice)).add(100).add(H1NativeApplication_Fee)
+      )
     })
 
     it('emits an event')
@@ -309,19 +324,22 @@ describe('NonfungiblePositionManager', () => {
       )
 
       await snapshotGasCost(
-        nft.mint({
-          token0: tokens[0].address,
-          token1: tokens[1].address,
-          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          fee: FeeAmount.MEDIUM,
-          recipient: wallet.address,
-          amount0Desired: 100,
-          amount1Desired: 100,
-          amount0Min: 0,
-          amount1Min: 0,
-          deadline: 10,
-        })
+        nft.mint(
+          {
+            token0: tokens[0].address,
+            token1: tokens[1].address,
+            tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            fee: FeeAmount.MEDIUM,
+            recipient: wallet.address,
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: 10,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       )
     })
 
@@ -354,7 +372,7 @@ describe('NonfungiblePositionManager', () => {
             ]),
             nft.interface.encodeFunctionData('refundETH'),
           ],
-          { value: 100 }
+          { value: H1NativeApplication_Fee.add(100) }
         )
       )
     })
@@ -388,7 +406,7 @@ describe('NonfungiblePositionManager', () => {
             ]),
             nft.interface.encodeFunctionData('refundETH'),
           ],
-          { value: 1000 }
+          { value: H1NativeApplication_Fee.add(1000) }
         )
       )
     })
@@ -401,34 +419,40 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        fee: FeeAmount.MEDIUM,
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 10,
-      })
-
-      await snapshotGasCost(
-        nft.mint({
+      await nft.mint(
+        {
           token0: tokens[0].address,
           token1: tokens[1].address,
           tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           fee: FeeAmount.MEDIUM,
-          recipient: wallet.address,
+          recipient: other.address,
           amount0Desired: 100,
           amount1Desired: 100,
           amount0Min: 0,
           amount1Min: 0,
           deadline: 10,
-        })
+        },
+        { value: H1NativeApplication_Fee }
+      )
+
+      await snapshotGasCost(
+        nft.mint(
+          {
+            token0: tokens[0].address,
+            token1: tokens[1].address,
+            tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            fee: FeeAmount.MEDIUM,
+            recipient: wallet.address,
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: 10,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       )
     })
 
@@ -440,34 +464,40 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        fee: FeeAmount.MEDIUM,
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 10,
-      })
-
-      await snapshotGasCost(
-        nft.mint({
+      await nft.mint(
+        {
           token0: tokens[0].address,
           token1: tokens[1].address,
-          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]) + TICK_SPACINGS[FeeAmount.MEDIUM],
-          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]) - TICK_SPACINGS[FeeAmount.MEDIUM],
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
           fee: FeeAmount.MEDIUM,
-          recipient: wallet.address,
+          recipient: other.address,
           amount0Desired: 100,
           amount1Desired: 100,
           amount0Min: 0,
           amount1Min: 0,
           deadline: 10,
-        })
+        },
+        { value: H1NativeApplication_Fee }
+      )
+
+      await snapshotGasCost(
+        nft.mint(
+          {
+            token0: tokens[0].address,
+            token1: tokens[1].address,
+            tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]) + TICK_SPACINGS[FeeAmount.MEDIUM],
+            tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]) - TICK_SPACINGS[FeeAmount.MEDIUM],
+            fee: FeeAmount.MEDIUM,
+            recipient: wallet.address,
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: 10,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       )
     })
   })
@@ -482,30 +512,36 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        fee: FeeAmount.MEDIUM,
-        recipient: other.address,
-        amount0Desired: 1000,
-        amount1Desired: 1000,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          fee: FeeAmount.MEDIUM,
+          recipient: other.address,
+          amount0Desired: 1000,
+          amount1Desired: 1000,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     it('increases position liquidity', async () => {
-      await nft.increaseLiquidity({
-        tokenId: tokenId,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.increaseLiquidity(
+        {
+          tokenId: tokenId,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
       const { liquidity } = await nft.positions(tokenId)
       expect(liquidity).to.eq(1100)
     })
@@ -515,7 +551,7 @@ describe('NonfungiblePositionManager', () => {
     it('can be paid with ETH', async () => {
       const [token0, token1] = sortedTokens(tokens[0], weth9)
 
-      const tokenId = 1
+      const tokenId = 2
 
       await nft.createAndInitializePoolIfNecessary(
         token0.address,
@@ -540,7 +576,7 @@ describe('NonfungiblePositionManager', () => {
         },
       ])
       const refundETHData = nft.interface.encodeFunctionData('unwrapWETH9', [0, other.address])
-      await nft.multicall([mintData, refundETHData], { value: expandTo18Decimals(1) })
+      await nft.multicall([mintData, refundETHData], { value: H1NativeApplication_Fee.add(100) })
 
       const increaseLiquidityData = nft.interface.encodeFunctionData('increaseLiquidity', [
         {
@@ -552,19 +588,24 @@ describe('NonfungiblePositionManager', () => {
           deadline: 1,
         },
       ])
-      await nft.multicall([increaseLiquidityData, refundETHData], { value: expandTo18Decimals(1) })
+      await nft.multicall([increaseLiquidityData, refundETHData], {
+        value: H1NativeApplication_Fee.add(100),
+      })
     })
 
     it('gas', async () => {
       await snapshotGasCost(
-        nft.increaseLiquidity({
-          tokenId: tokenId,
-          amount0Desired: 100,
-          amount1Desired: 100,
-          amount0Min: 0,
-          amount1Min: 0,
-          deadline: 1,
-        })
+        nft.increaseLiquidity(
+          {
+            tokenId: tokenId,
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: 1,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       )
     })
   })
@@ -579,19 +620,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        fee: FeeAmount.MEDIUM,
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          fee: FeeAmount.MEDIUM,
+          recipient: other.address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     it('emits an event')
@@ -599,18 +643,31 @@ describe('NonfungiblePositionManager', () => {
     it('fails if past deadline', async () => {
       await nft.setTime(2)
       await expect(
-        nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+        nft
+          .connect(other)
+          .decreaseLiquidity(
+            { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+            { value: H1NativeApplication_Fee }
+          )
       ).to.be.revertedWith('Transaction too old')
     })
 
     it('cannot be called by other addresses', async () => {
       await expect(
-        nft.decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+        nft.decreaseLiquidity(
+          { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       ).to.be.revertedWith('Not approved')
     })
 
     it('decreases position liquidity', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 25, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 25, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       const { liquidity } = await nft.positions(tokenId)
       expect(liquidity).to.eq(75)
     })
@@ -618,56 +675,92 @@ describe('NonfungiblePositionManager', () => {
     it('is payable', async () => {
       await nft
         .connect(other)
-        .decreaseLiquidity({ tokenId, liquidity: 25, amount0Min: 0, amount1Min: 0, deadline: 1 }, { value: 1 })
+        .decreaseLiquidity(
+          { tokenId, liquidity: 25, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
     })
 
     it('accounts for tokens owed', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 25, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 25, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       const { tokensOwed0, tokensOwed1 } = await nft.positions(tokenId)
       expect(tokensOwed0).to.eq(24)
       expect(tokensOwed1).to.eq(24)
     })
 
     it('can decrease for all the liquidity', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       const { liquidity } = await nft.positions(tokenId)
       expect(liquidity).to.eq(0)
     })
 
     it('cannot decrease for more than all the liquidity', async () => {
       await expect(
-        nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 101, amount0Min: 0, amount1Min: 0, deadline: 1 })
+        nft
+          .connect(other)
+          .decreaseLiquidity(
+            { tokenId, liquidity: 101, amount0Min: 0, amount1Min: 0, deadline: 1 },
+            { value: H1NativeApplication_Fee }
+          )
       ).to.be.reverted
     })
 
     it('cannot decrease for more than the liquidity of the nft position', async () => {
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        fee: FeeAmount.MEDIUM,
-        recipient: other.address,
-        amount0Desired: 200,
-        amount1Desired: 200,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          fee: FeeAmount.MEDIUM,
+          recipient: other.address,
+          amount0Desired: 200,
+          amount1Desired: 200,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
       await expect(
-        nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 101, amount0Min: 0, amount1Min: 0, deadline: 1 })
+        nft
+          .connect(other)
+          .decreaseLiquidity(
+            { tokenId, liquidity: 101, amount0Min: 0, amount1Min: 0, deadline: 1 },
+            { value: H1NativeApplication_Fee }
+          )
       ).to.be.reverted
     })
 
     it('gas partial decrease', async () => {
       await snapshotGasCost(
-        nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+        nft
+          .connect(other)
+          .decreaseLiquidity(
+            { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+            { value: H1NativeApplication_Fee }
+          )
       )
     })
 
     it('gas complete decrease', async () => {
       await snapshotGasCost(
-        nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 })
+        nft
+          .connect(other)
+          .decreaseLiquidity(
+            { tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 },
+            { value: H1NativeApplication_Fee }
+          )
       )
     })
   })
@@ -682,19 +775,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: other.address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     it('emits an event')
@@ -735,7 +831,12 @@ describe('NonfungiblePositionManager', () => {
     })
 
     it('transfers tokens owed from burn', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       const poolAddress = computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.MEDIUM)
       await expect(
         nft.connect(other).collect({
@@ -752,7 +853,12 @@ describe('NonfungiblePositionManager', () => {
     })
 
     it('gas transfers both', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       await snapshotGasCost(
         nft.connect(other).collect({
           tokenId,
@@ -764,7 +870,12 @@ describe('NonfungiblePositionManager', () => {
     })
 
     it('gas transfers token0 only', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       await snapshotGasCost(
         nft.connect(other).collect({
           tokenId,
@@ -776,7 +887,12 @@ describe('NonfungiblePositionManager', () => {
     })
 
     it('gas transfers token1 only', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       await snapshotGasCost(
         nft.connect(other).collect({
           tokenId,
@@ -798,19 +914,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: other.address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     it('emits an event')
@@ -824,17 +943,32 @@ describe('NonfungiblePositionManager', () => {
     })
 
     it('cannot be called while there is still partial liquidity', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       await expect(nft.connect(other).burn(tokenId)).to.be.revertedWith('Not cleared')
     })
 
     it('cannot be called while there is still tokens owed', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       await expect(nft.connect(other).burn(tokenId)).to.be.revertedWith('Not cleared')
     })
 
     it('deletes the token', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       await nft.connect(other).collect({
         tokenId,
         recipient: wallet.address,
@@ -846,7 +980,12 @@ describe('NonfungiblePositionManager', () => {
     })
 
     it('gas', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 })
+      await nft
+        .connect(other)
+        .decreaseLiquidity(
+          { tokenId, liquidity: 100, amount0Min: 0, amount1Min: 0, deadline: 1 },
+          { value: H1NativeApplication_Fee }
+        )
       await nft.connect(other).collect({
         tokenId,
         recipient: wallet.address,
@@ -867,19 +1006,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: other.address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     it('can only be called by authorized or owner', async () => {
@@ -923,19 +1065,22 @@ describe('NonfungiblePositionManager', () => {
           encodePriceSqrt(1, 1)
         )
 
-        await nft.mint({
-          token0: tokens[0].address,
-          token1: tokens[1].address,
-          fee: FeeAmount.MEDIUM,
-          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          recipient: other.address,
-          amount0Desired: 100,
-          amount1Desired: 100,
-          amount0Min: 0,
-          amount1Min: 0,
-          deadline: 1,
-        })
+        await nft.mint(
+          {
+            token0: tokens[0].address,
+            token1: tokens[1].address,
+            fee: FeeAmount.MEDIUM,
+            tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            recipient: other.address,
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: 1,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       })
 
       it('changes the operator of the position and increments the nonce', async () => {
@@ -988,19 +1133,22 @@ describe('NonfungiblePositionManager', () => {
           encodePriceSqrt(1, 1)
         )
 
-        await nft.mint({
-          token0: tokens[0].address,
-          token1: tokens[1].address,
-          fee: FeeAmount.MEDIUM,
-          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-          recipient: testPositionNFTOwner.address,
-          amount0Desired: 100,
-          amount1Desired: 100,
-          amount0Min: 0,
-          amount1Min: 0,
-          deadline: 1,
-        })
+        await nft.mint(
+          {
+            token0: tokens[0].address,
+            token1: tokens[1].address,
+            fee: FeeAmount.MEDIUM,
+            tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+            recipient: testPositionNFTOwner.address,
+            amount0Desired: 100,
+            amount1Desired: 100,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: 1,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       })
 
       it('changes the operator of the position and increments the nonce', async () => {
@@ -1048,19 +1196,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: other.address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     async function exit({
@@ -1091,7 +1242,7 @@ describe('NonfungiblePositionManager', () => {
       ])
       const burnData = nft.interface.encodeFunctionData('burn', [tokenId])
 
-      return nft.multicall([decreaseLiquidityData, collectData, burnData])
+      return nft.multicall([decreaseLiquidityData, collectData, burnData], { value: H1NativeApplication_Fee })
     }
 
     it('executes all the actions', async () => {
@@ -1137,19 +1288,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          recipient: other.address,
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     it('reverts for invalid token id', async () => {
@@ -1177,47 +1331,56 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
       // nft 1 earns 25% of fees
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(FeeAmount.MEDIUM),
-        tickUpper: getMaxTick(FeeAmount.MEDIUM),
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-        recipient: wallet.address,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(FeeAmount.MEDIUM),
+          tickUpper: getMaxTick(FeeAmount.MEDIUM),
+          amount0Desired: 100,
+          amount1Desired: 100,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+          recipient: wallet.address,
+        },
+        { value: H1NativeApplication_Fee }
+      )
       // nft 2 earns 75% of fees
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.MEDIUM,
-        tickLower: getMinTick(FeeAmount.MEDIUM),
-        tickUpper: getMaxTick(FeeAmount.MEDIUM),
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          fee: FeeAmount.MEDIUM,
+          tickLower: getMinTick(FeeAmount.MEDIUM),
+          tickUpper: getMaxTick(FeeAmount.MEDIUM),
 
-        amount0Desired: 300,
-        amount1Desired: 300,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-        recipient: wallet.address,
-      })
+          amount0Desired: 300,
+          amount1Desired: 300,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 1,
+          recipient: wallet.address,
+        },
+        { value: H1NativeApplication_Fee }
+      )
     })
 
     describe('10k of token0 fees collect', () => {
       beforeEach('swap for ~10k of fees', async () => {
         const swapAmount = 3_333_333
         await tokens[0].approve(router.address, swapAmount)
-        await router.exactInput({
-          recipient: wallet.address,
-          deadline: 1,
-          path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
-          amountIn: swapAmount,
-          amountOutMinimum: 0,
-        }, {value: H1NativeApplication_Fee})
+        await router.exactInput(
+          {
+            recipient: wallet.address,
+            deadline: 1,
+            path: encodePath([tokens[0].address, tokens[1].address], [FeeAmount.MEDIUM]),
+            amountIn: swapAmount,
+            amountOutMinimum: 0,
+          },
+          { value: H1NativeApplication_Fee }
+        )
       })
       it('expected amounts', async () => {
         const { amount0: nft1Amount0, amount1: nft1Amount1 } = await nft.callStatic.collect({
@@ -1285,19 +1448,22 @@ describe('NonfungiblePositionManager', () => {
         encodePriceSqrt(1, 1)
       )
 
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-        fee: FeeAmount.MEDIUM,
-        recipient: other.address,
-        amount0Desired: 15,
-        amount1Desired: 15,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 10,
-      })
+      await nft.mint(
+        {
+          token0: tokens[0].address,
+          token1: tokens[1].address,
+          tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
+          fee: FeeAmount.MEDIUM,
+          recipient: other.address,
+          amount0Desired: 15,
+          amount1Desired: 15,
+          amount0Min: 0,
+          amount1Min: 0,
+          deadline: 10,
+        },
+        { value: H1NativeApplication_Fee }
+      )
 
       await snapshotGasCost(positionsGasTest.getGasCostOfPositions(1))
     })

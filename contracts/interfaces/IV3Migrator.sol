@@ -30,5 +30,5 @@ interface IV3Migrator is IMulticall, ISelfPermit, IPoolInitializer {
     /// the maximum amount of v3 liquidity that the v2 liquidity can get. For the special case of migrating to an
     /// out-of-range position, `amount{0,1}Min` may be set to 0, enforcing that the position remains out of range
     /// @param params The params necessary to migrate v2 liquidity, encoded as `MigrateParams` in calldata
-    function migrate(MigrateParams calldata params) external;
+    function migrate(MigrateParams calldata params) external payable;
 }

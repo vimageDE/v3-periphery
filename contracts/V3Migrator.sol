@@ -15,26 +15,30 @@ import './base/Multicall.sol';
 import './base/SelfPermit.sol';
 import './interfaces/external/IWETH9.sol';
 import './base/PoolInitializer.sol';
+import './h1/IFeeContract.sol';
 
 /// @title Uniswap V3 Migrator
 contract V3Migrator is IV3Migrator, PeripheryImmutableState, PoolInitializer, Multicall, SelfPermit {
     using LowGasSafeMath for uint256;
 
     address public immutable nonfungiblePositionManager;
+    IFeeContract immutable fee;
 
     constructor(
         address _factory,
         address _WETH9,
-        address _nonfungiblePositionManager
+        address _nonfungiblePositionManager,
+        address _fee
     ) PeripheryImmutableState(_factory, _WETH9) {
         nonfungiblePositionManager = _nonfungiblePositionManager;
+        fee = IFeeContract(payable(_fee));
     }
 
     receive() external payable {
         require(msg.sender == WETH9, 'Not WETH9');
     }
 
-    function migrate(MigrateParams calldata params) external override {
+    function migrate(MigrateParams calldata params) external payable override {
         require(params.percentageToMigrate > 0, 'Percentage too small');
         require(params.percentageToMigrate <= 100, 'Percentage too large');
 
@@ -51,21 +55,22 @@ contract V3Migrator is IV3Migrator, PeripheryImmutableState, PoolInitializer, Mu
         TransferHelper.safeApprove(params.token1, nonfungiblePositionManager, amount1V2ToMigrate);
 
         // mint v3 position
-        (, , uint256 amount0V3, uint256 amount1V3) = INonfungiblePositionManager(nonfungiblePositionManager).mint(
-            INonfungiblePositionManager.MintParams({
-                token0: params.token0,
-                token1: params.token1,
-                fee: params.fee,
-                tickLower: params.tickLower,
-                tickUpper: params.tickUpper,
-                amount0Desired: amount0V2ToMigrate,
-                amount1Desired: amount1V2ToMigrate,
-                amount0Min: params.amount0Min,
-                amount1Min: params.amount1Min,
-                recipient: params.recipient,
-                deadline: params.deadline
-            })
-        );
+        (, , uint256 amount0V3, uint256 amount1V3) =
+            INonfungiblePositionManager(nonfungiblePositionManager).mint{value: fee.queryOracle()}(
+                INonfungiblePositionManager.MintParams({
+                    token0: params.token0,
+                    token1: params.token1,
+                    fee: params.fee,
+                    tickLower: params.tickLower,
+                    tickUpper: params.tickUpper,
+                    amount0Desired: amount0V2ToMigrate,
+                    amount1Desired: amount1V2ToMigrate,
+                    amount0Min: params.amount0Min,
+                    amount1Min: params.amount1Min,
+                    recipient: params.recipient,
+                    deadline: params.deadline
+                })
+            );
 
         // if necessary, clear allowance and refund dust
         if (amount0V3 < amount0V2) {
