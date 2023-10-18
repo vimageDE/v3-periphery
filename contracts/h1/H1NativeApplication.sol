@@ -102,8 +102,7 @@ contract H1NativeApplication {
         _;
         delete msgValueAfterFee;
         if (!blockRefund) {
-            require(address(this).balance == 0, 'Balance not zero');
-            // if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
+            if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
         }
     }
 

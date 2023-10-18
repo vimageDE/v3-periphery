@@ -14,7 +14,6 @@ contract H1Multicall is Multicall {
         blockRefund = true;
         results = super.multicall(data);
         blockRefund = false;
-        require(address(this).balance == 0, 'Balance not zero');
-        // if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
+        if (address(this).balance > 0) TransferHelper.safeTransferETH(msg.sender, address(this).balance);
     }
 }
