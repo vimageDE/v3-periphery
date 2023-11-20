@@ -15,7 +15,7 @@ import './base/Multicall.sol';
 import './base/SelfPermit.sol';
 import './interfaces/external/IWETH9.sol';
 import './base/PoolInitializer.sol';
-import './h1/IFeeContract.sol';
+import './h1/interfaces/IFeeContractV07Downgrade.sol';
 
 /// @title Uniswap V3 Migrator
 contract V3Migrator is IV3Migrator, PeripheryImmutableState, PoolInitializer, Multicall, SelfPermit {
@@ -31,7 +31,8 @@ contract V3Migrator is IV3Migrator, PeripheryImmutableState, PoolInitializer, Mu
         address _fee
     ) PeripheryImmutableState(_factory, _WETH9) {
         nonfungiblePositionManager = _nonfungiblePositionManager;
-        fee = IFeeContract(payable(_fee));
+        fee = IFeeContract(_fee);
+        IFeeContract(_fee).setGraceContract(true);
     }
 
     receive() external payable {
@@ -56,7 +57,7 @@ contract V3Migrator is IV3Migrator, PeripheryImmutableState, PoolInitializer, Mu
 
         // mint v3 position
         (, , uint256 amount0V3, uint256 amount1V3) =
-            INonfungiblePositionManager(nonfungiblePositionManager).mint{value: fee.queryOracle()}(
+            INonfungiblePositionManager(nonfungiblePositionManager).mint{value: fee.getFee()}(
                 INonfungiblePositionManager.MintParams({
                     token0: params.token0,
                     token1: params.token1,
@@ -98,6 +99,9 @@ contract V3Migrator is IV3Migrator, PeripheryImmutableState, PoolInitializer, Mu
             } else {
                 TransferHelper.safeTransfer(params.token1, msg.sender, refund1);
             }
+        }
+        if (address(this).balance > 0) {
+            TransferHelper.safeTransferETH(msg.sender, address(this).balance);
         }
     }
 }

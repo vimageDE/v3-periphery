@@ -8,7 +8,7 @@ import '../interfaces/ISwapRouter.sol';
 import '../libraries/PoolAddress.sol';
 import '../libraries/CallbackValidation.sol';
 import '../libraries/TransferHelper.sol';
-import './H1NativeApplication.sol';
+import {H1NativeApplicationV07Downgrade as H1NativeApplication} from './H1NativeApplicationV07Downgrade.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
 contract H1FlashRouter is IUniswapV3FlashCallback, H1NativeApplication {
@@ -37,7 +37,7 @@ contract H1FlashRouter is IUniswapV3FlashCallback, H1NativeApplication {
         uint256 _amount0,
         uint256 _amount1,
         bytes memory data
-    ) external payable applicationFee {
+    ) external payable applicationFee(false, true) {
         require(caller == address(0));
 
         pool = IUniswapV3Pool(PoolAddress.computeAddress(factory, poolKey));

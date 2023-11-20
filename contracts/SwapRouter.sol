@@ -17,7 +17,7 @@ import './libraries/PoolAddress.sol';
 import './libraries/CallbackValidation.sol';
 import './interfaces/external/IWETH9.sol';
 
-import './h1/H1NativeApplication.sol';
+import {H1NativeApplicationV07Downgrade as H1NativeApplication} from './h1/H1NativeApplicationV07Downgrade.sol';
 
 /// @title Uniswap V3 Swap Router
 /// @notice Router for stateless execution of swaps against Uniswap V3
@@ -124,7 +124,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
-        applicationFeeWithPayableAndRefund(blockRefund)
+        applicationFee(true, !blockRefund)
         returns (uint256 amountOut)
     {
         amountOut = exactInputInternal(
@@ -142,7 +142,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
-        applicationFeeWithPayableAndRefund(blockRefund)
+        applicationFee(true, !blockRefund)
         returns (uint256 amountOut)
     {
         address payer = msg.sender; // msg.sender pays for the first hop
@@ -214,7 +214,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
-        applicationFeeWithPayableAndRefund(blockRefund)
+        applicationFee(true, !blockRefund)
         returns (uint256 amountIn)
     {
         // avoid an SLOAD by using the swap return data
@@ -236,7 +236,7 @@ contract SwapRouter is
         payable
         override
         checkDeadline(params.deadline)
-        applicationFeeWithPayableAndRefund(blockRefund)
+        applicationFee(true, !blockRefund)
         returns (uint256 amountIn)
     {
         // it's okay that the payer is fixed to msg.sender here, as they're only paying for the "final" exact output

@@ -17,7 +17,7 @@ import './base/ERC721Permit.sol';
 import './base/PeripheryValidation.sol';
 import './base/SelfPermit.sol';
 import './base/PoolInitializer.sol';
-import './h1/H1NativeApplication.sol';
+import {H1NativeApplicationV07Downgrade as H1NativeApplication} from './h1/H1NativeApplicationV07Downgrade.sol';
 
 /// @title NFT positions
 /// @notice Wraps Uniswap V3 positions in the ERC721 non-fungible token interface
@@ -137,7 +137,19 @@ contract NonfungiblePositionManager is
         payable
         override
         checkDeadline(params.deadline)
-        applicationFeeWithPayableAndRefund(blockRefund)
+        applicationFee(true, !blockRefund)
+        returns (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        (tokenId, liquidity, amount0, amount1) = _mint(params);
+    }
+
+    function _mint(MintParams calldata params)
+        internal
         returns (
             uint256 tokenId,
             uint128 liquidity,
@@ -208,7 +220,7 @@ contract NonfungiblePositionManager is
         payable
         override
         checkDeadline(params.deadline)
-        applicationFeeWithPayableAndRefund(blockRefund)
+        applicationFee(true, !blockRefund)
         returns (
             uint128 liquidity,
             uint256 amount0,
@@ -269,7 +281,14 @@ contract NonfungiblePositionManager is
         override
         isAuthorizedForToken(params.tokenId)
         checkDeadline(params.deadline)
-        applicationFeeWithPayableAndRefund(blockRefund)
+        applicationFee(true, !blockRefund)
+        returns (uint256 amount0, uint256 amount1)
+    {
+        (amount0, amount1) = _decreaseLiquidity(params);
+    }
+
+    function _decreaseLiquidity(DecreaseLiquidityParams calldata params)
+        internal
         returns (uint256 amount0, uint256 amount1)
     {
         require(params.liquidity > 0);
